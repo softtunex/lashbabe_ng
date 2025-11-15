@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "services",
+  "info": {
+    "singularName": "service",
+    "pluralName": "services",
+    "displayName": "Service"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Name": {
+      "type": "string",
+      "required": true
+    },
+    "Description": {
+      "type": "blocks",
+      "required": false
+    },
+    "Price": {
+      "type": "decimal",
+      "required": true
+    },
+    "Duration": {
+      "type": "integer"
+    },
+    "Deposit": {
+      "type": "decimal",
+      "default": 10000
+    },
+    "Picture": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "appointments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::appointment.appointment",
+      "mappedBy": "service"
+    },
+    "OnSalesPrice": {
+      "type": "decimal"
+    }
+  }
+}

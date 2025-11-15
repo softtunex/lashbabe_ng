@@ -1,0 +1,43 @@
+{
+  "kind": "collectionType",
+  "collectionName": "appointments",
+  "info": {
+    "singularName": "appointment",
+    "pluralName": "appointments",
+    "displayName": "Appointment"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "ClientName": {
+      "type": "string",
+      "required": true
+    },
+    "ClientEmail": {
+      "type": "email"
+    },
+    "ClientPhone": {
+      "type": "string"
+    },
+    "AppointmentDateTime": {
+      "type": "datetime"
+    },
+    "BookingStatus": {
+      "type": "enumeration",
+      "enum": [
+        "Confirmed",
+        "Completed",
+        "Cancelled",
+        "No-Show"
+      ]
+    },
+    "service": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::service.service",
+      "inversedBy": "appointments"
+    }
+  }
+}
