@@ -48,6 +48,9 @@
     },
     "OnSalesPrice": {
       "type": "decimal"
+    },
+    "OnSaleTitle": {
+      "type": "string"
     }
   }
 }

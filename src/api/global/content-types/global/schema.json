@@ -1,0 +1,40 @@
+{
+  "kind": "singleType",
+  "collectionName": "globals",
+  "info": {
+    "singularName": "global",
+    "pluralName": "globals",
+    "displayName": "Global"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Address": {
+      "type": "text"
+    },
+    "PhoneNumber": {
+      "type": "string"
+    },
+    "EmailAddress": {
+      "type": "email"
+    },
+    "InstagramURL": {
+      "type": "string"
+    },
+    "TikTokURL": {
+      "type": "string"
+    },
+    "Logo": {
+      "type": "media",
+      "multiple": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    }
+  }
+}

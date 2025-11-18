@@ -1,0 +1,46 @@
+{
+  "kind": "singleType",
+  "collectionName": "academy_pages",
+  "info": {
+    "singularName": "academy-page",
+    "pluralName": "academy-pages",
+    "displayName": "AcademyPage"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Title": {
+      "type": "string"
+    },
+    "Subtitle": {
+      "type": "text"
+    },
+    "WhatYouWillLearn": {
+      "type": "blocks"
+    },
+    "CourseDuration": {
+      "type": "string"
+    },
+    "CoursePrice": {
+      "type": "decimal"
+    },
+    "CourseIncludes": {
+      "type": "string"
+    },
+    "WhatsAppLink": {
+      "type": "string"
+    },
+    "HeroImage": {
+      "type": "media",
+      "multiple": true,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    }
+  }
+}
