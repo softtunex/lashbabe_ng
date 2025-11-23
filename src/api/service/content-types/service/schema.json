@@ -24,7 +24,8 @@
       "required": true
     },
     "Duration": {
-      "type": "integer"
+      "type": "integer",
+      "required": true
     },
     "Deposit": {
       "type": "decimal",

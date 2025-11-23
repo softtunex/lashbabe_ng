@@ -14,4 +14,21 @@ export default ({ env }) => ({
       },
     },
   },
+  email: {
+    config: {
+      provider: "@strapi/provider-email-nodemailer",
+      providerOptions: {
+        host: env("SMTP_HOST"),
+        port: env("SMTP_PORT"),
+        auth: {
+          user: env("SMTP_USERNAME"),
+          pass: env("SMTP_PASSWORD"),
+        },
+      },
+      settings: {
+        defaultFrom: env("SMTP_FROM_EMAIL"),
+        defaultReplyTo: env("SMTP_REPLY_TO_EMAIL"),
+      },
+    },
+  },
 });

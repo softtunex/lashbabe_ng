@@ -23,8 +23,7 @@
     },
     "SlotIntervalMinutes": {
       "type": "integer",
-      "required": true,
-      "max": 60
+      "required": true
     },
     "BookingWindowHours": {
       "type": "integer",

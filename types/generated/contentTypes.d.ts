@@ -564,14 +564,7 @@ export interface ApiBookingSettingBookingSetting
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
-    SlotIntervalMinutes: Schema.Attribute.Integer &
-      Schema.Attribute.Required &
-      Schema.Attribute.SetMinMax<
-        {
-          max: 60;
-        },
-        number
-      >;
+    SlotIntervalMinutes: Schema.Attribute.Integer & Schema.Attribute.Required;
     StartTimeHour: Schema.Attribute.Integer &
       Schema.Attribute.Required &
       Schema.Attribute.SetMinMax<
@@ -736,7 +729,7 @@ export interface ApiServiceService extends Struct.CollectionTypeSchema {
       Schema.Attribute.Private;
     Deposit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<10000>;
     Description: Schema.Attribute.Blocks;
-    Duration: Schema.Attribute.Integer;
+    Duration: Schema.Attribute.Integer & Schema.Attribute.Required;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
