@@ -16,18 +16,9 @@ export default ({ env }) => ({
   },
   email: {
     config: {
-      provider: "nodemailer",
+      provider: "sendgrid",
       providerOptions: {
-        host: env("SMTP_HOST"),
-        port: env.int("SMTP_PORT"),
-        auth: {
-          user: env("SMTP_USERNAME"),
-          pass: env("SMTP_PASSWORD"),
-        },
-        secure: false,
-        tls: {
-          rejectUnauthorized: false,
-        },
+        apiKey: env("SMTP_PASSWORD"),
       },
       settings: {
         defaultFrom: env("SMTP_FROM_EMAIL"),
