@@ -33,11 +33,19 @@
         "No-Show"
       ]
     },
-    "service": {
+    "booked_services": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "manyToMany",
       "target": "api::service.service",
-      "inversedBy": "appointments"
+      "inversedBy": "booked_appointments"
+    },
+    "SelectedStaff": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::staff.staff"
+    },
+    "TotalAmount": {
+      "type": "decimal"
     }
   }
 }

@@ -41,17 +41,21 @@
         "audios"
       ]
     },
-    "appointments": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::appointment.appointment",
-      "mappedBy": "service"
-    },
     "OnSalesPrice": {
       "type": "decimal"
     },
     "OnSaleTitle": {
       "type": "string"
+    },
+    "IsAddOn": {
+      "type": "boolean",
+      "default": false
+    },
+    "booked_appointments": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::appointment.appointment",
+      "mappedBy": "booked_services"
     }
   }
 }

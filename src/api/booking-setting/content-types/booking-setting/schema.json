@@ -28,6 +28,11 @@
     "BookingWindowHours": {
       "type": "integer",
       "required": false
+    },
+    "available_staffs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::staff.staff"
     }
   }
 }

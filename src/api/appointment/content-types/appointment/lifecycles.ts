@@ -27,11 +27,12 @@ const sendNewAppointmentEmails = async (data) => {
     clientEmail,
     clientName,
     clientPhone,
-    serviceName,
+    serviceNames,
     date,
     time,
     duration,
     deposit,
+    staffName,
   } = data;
 
   try {
@@ -40,27 +41,29 @@ const sendNewAppointmentEmails = async (data) => {
       subject: "✨ Your LashBabe Appointment is Confirmed!",
       html: getConfirmationTemplate(
         clientName,
-        serviceName,
+        serviceNames,
         date,
         time,
         duration,
-        deposit
+        deposit,
+        staffName
       ),
     });
     console.log(`✓ Confirmation email sent to ${clientEmail}`);
 
     await strapi.plugins["email"].services.email.send({
       to: ADMIN_EMAIL,
-      subject: `🔔 New Booking: ${serviceName} - ${clientName}`,
+      subject: `🔔 New Booking: ${serviceNames} - ${clientName}`,
       html: getAdminNotificationTemplate(
         clientName,
         clientEmail,
         clientPhone,
-        serviceName,
+        serviceNames,
         date,
         time,
         duration,
-        deposit
+        deposit,
+        staffName
       ),
     });
     console.log(`✓ Admin notification sent`);
@@ -70,7 +73,7 @@ const sendNewAppointmentEmails = async (data) => {
 };
 
 const sendUpdateEmails = async (data) => {
-  const { clientEmail, clientName, serviceName, subject, message } = data;
+  const { clientEmail, clientName, serviceNames, subject, message } = data;
 
   try {
     await strapi.plugins["email"].services.email.send({
@@ -81,7 +84,7 @@ const sendUpdateEmails = async (data) => {
 
     await strapi.plugins["email"].services.email.send({
       to: ADMIN_EMAIL,
-      subject: `🔔 Updated: ${serviceName} - ${clientName}`,
+      subject: `🔔 Updated: ${serviceNames} - ${clientName}`,
       html: message,
     });
     console.log("✓ Update emails sent successfully.");
@@ -103,14 +106,14 @@ export default {
         .query("api::appointment.appointment")
         .findOne({
           where: params.where,
-          populate: ["service"],
+          populate: ["booked_services", "SelectedStaff"],
         });
 
       if (oldAppointment) {
         beforeUpdateState.set(oldAppointment.documentId, {
           AppointmentDateTime: oldAppointment.AppointmentDateTime,
           BookingStatus: oldAppointment.BookingStatus,
-          service: oldAppointment.service,
+          booked_services: oldAppointment.booked_services,
           publishedAt: oldAppointment.publishedAt,
         });
       }
@@ -157,7 +160,7 @@ export default {
         .documents("api::appointment.appointment")
         .findOne({
           documentId: result.documentId,
-          populate: ["service"],
+          populate: ["booked_services", "SelectedStaff"],
         });
 
       if (!appointment) {
@@ -165,17 +168,27 @@ export default {
         return;
       }
 
+      // Handle multiple services
+      const services = appointment.booked_services || [];
+      const serviceNames =
+        services.map((s) => s.Name).join(", ") || "Your Services";
+      const totalDuration = services.reduce(
+        (sum, s) => sum + (s.Duration || 0),
+        0
+      );
+      const totalDeposit = services.reduce(
+        (sum, s) => sum + (s.Deposit || 0),
+        0
+      );
+
       const emailData = {
         clientEmail: appointment.ClientEmail,
         clientName: appointment.ClientName,
         clientPhone: appointment.ClientPhone,
-        serviceName: appointment.service?.Name || "Your Service",
-        deposit: appointment.service?.Deposit
-          ? `₦${Number(appointment.service.Deposit).toLocaleString()}`
-          : "₦10,000",
-        duration: appointment.service?.Duration
-          ? `${appointment.service.Duration} mins`
-          : "",
+        serviceNames: serviceNames,
+        deposit: `₦${Number(totalDeposit).toLocaleString()}`,
+        duration: totalDuration > 0 ? `${totalDuration} mins` : "",
+        staffName: appointment.SelectedStaff?.Name || null,
         date: new Date(appointment.AppointmentDateTime).toLocaleDateString(
           "en-US",
           { weekday: "long", year: "numeric", month: "long", day: "numeric" }
@@ -231,7 +244,7 @@ export default {
         .documents("api::appointment.appointment")
         .findOne({
           documentId: result.documentId,
-          populate: ["service"],
+          populate: ["booked_services", "SelectedStaff"],
         });
 
       if (!appointment) {
@@ -239,7 +252,10 @@ export default {
         return;
       }
 
-      const serviceName = appointment.service?.Name || "Your Service";
+      // Handle multiple services
+      const services = appointment.booked_services || [];
+      const serviceNames =
+        services.map((s) => s.Name).join(", ") || "Your Services";
 
       console.log("=== UPDATE CHECK ===");
       console.log(
@@ -273,7 +289,7 @@ export default {
         subject = "⏰ Your LashBabe Appointment Has Been Rescheduled";
         message = getRescheduleTemplate(
           result.ClientName,
-          serviceName,
+          serviceNames,
           date,
           time
         );
@@ -285,7 +301,7 @@ export default {
         subject = `📋 Your LashBabe Appointment Status: ${currentStatus}`;
         message = getStatusUpdateTemplate(
           result.ClientName,
-          serviceName,
+          serviceNames,
           currentStatus
         );
         console.log(
@@ -298,7 +314,7 @@ export default {
         sendUpdateEmails({
           clientEmail: result.ClientEmail,
           clientName: result.ClientName,
-          serviceName,
+          serviceNames,
           subject,
           message,
         });
@@ -319,11 +335,12 @@ export default {
 
 const getConfirmationTemplate = (
   clientName,
-  serviceName,
+  serviceNames,
   date,
   time,
   duration,
-  deposit
+  deposit,
+  staffName
 ) => `
 <!DOCTYPE html>
 <html>
@@ -355,8 +372,21 @@ const getConfirmationTemplate = (
               <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f0f0f0; margin-bottom: 40px;">
                 <tr>
                   <td style="padding: 40px 35px;">
-                    <h2 style="color: #1a1a1a; margin: 0 0 30px 0; font-size: 26px; font-weight: 600; font-family: 'Playfair Display', Georgia, serif; line-height: 1.3;">${serviceName}</h2>
+                    <h2 style="color: #1a1a1a; margin: 0 0 30px 0; font-size: 26px; font-weight: 600; font-family: 'Playfair Display', Georgia, serif; line-height: 1.3;">${serviceNames}</h2>
                     <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                      ${
+                        staffName
+                          ? `
+                      <tr>
+                        <td style="padding: 12px 0; border-bottom: 1px solid #d0d0d0;">
+                          <span style="color: #888888; font-size: 15px; font-weight: 500;">👤 Technician</span>
+                        </td>
+                        <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid #d0d0d0;">
+                          <strong style="color: #1a1a1a; font-size: 15px; font-weight: 600;">${staffName}</strong>
+                        </td>
+                      </tr>`
+                          : ""
+                      }
                       <tr>
                         <td style="padding: 12px 0; border-bottom: 1px solid #d0d0d0;">
                           <span style="color: #888888; font-size: 15px; font-weight: 500;">📅 Date</span>
@@ -426,11 +456,12 @@ const getAdminNotificationTemplate = (
   clientName,
   email,
   phone,
-  serviceName,
+  serviceNames,
   date,
   time,
   duration,
-  deposit
+  deposit,
+  staffName
 ) => `
 <!DOCTYPE html>
 <html>
@@ -454,7 +485,8 @@ const getAdminNotificationTemplate = (
               <p><strong>Email:</strong> ${email}</p>
               <p><strong>Phone:</strong> ${phone}</p>
               <hr>
-              <p><strong>Service:</strong> ${serviceName}</p>
+              <p><strong>Services:</strong> ${serviceNames}</p>
+              ${staffName ? `<p><strong>Technician:</strong> ${staffName}</p>` : ""}
               <p><strong>Date:</strong> ${date}</p>
               <p><strong>Time:</strong> ${time}</p>
               <p><strong>Deposit:</strong> ${deposit}</p>
@@ -468,7 +500,7 @@ const getAdminNotificationTemplate = (
 </html>
 `;
 
-const getRescheduleTemplate = (clientName, serviceName, date, time) => `
+const getRescheduleTemplate = (clientName, serviceNames, date, time) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -487,7 +519,7 @@ const getRescheduleTemplate = (clientName, serviceName, date, time) => `
           <tr>
             <td style="padding: 45px 40px;">
               <p>Hi ${clientName},</p>
-              <p>Your appointment for <strong>${serviceName}</strong> has been rescheduled to:</p>
+              <p>Your appointment for <strong>${serviceNames}</strong> has been rescheduled to:</p>
               <h2 style="text-align:center; background:#f0f0f0; padding:25px;">${date} at ${time}</h2>
             </td>
           </tr>
@@ -499,7 +531,7 @@ const getRescheduleTemplate = (clientName, serviceName, date, time) => `
 </html>
 `;
 
-const getStatusUpdateTemplate = (clientName, serviceName, status) => `
+const getStatusUpdateTemplate = (clientName, serviceNames, status) => `
 <!DOCTYPE html>
 <html>
 <head>
@@ -518,7 +550,7 @@ const getStatusUpdateTemplate = (clientName, serviceName, status) => `
           <tr>
             <td style="padding: 45px 40px;">
               <p>Hi ${clientName},</p>
-              <p>Your appointment for <strong>${serviceName}</strong> status is now:</p>
+              <p>Your appointment for <strong>${serviceNames}</strong> status is now:</p>
               <h2 style="text-align:center; background:#1a1a1a; color:#fff; padding:25px;">${status}</h2>
             </td>
           </tr>

@@ -1,0 +1,22 @@
+{
+  "kind": "singleType",
+  "collectionName": "booking_policies",
+  "info": {
+    "singularName": "booking-policy",
+    "pluralName": "booking-policies",
+    "displayName": "BookingPolicy"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "ShowBeforePayment": {
+      "type": "boolean",
+      "default": false
+    },
+    "PolicyContent": {
+      "type": "blocks"
+    }
+  }
+}

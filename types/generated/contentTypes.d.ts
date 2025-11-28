@@ -510,6 +510,10 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
   };
   attributes: {
     AppointmentDateTime: Schema.Attribute.DateTime;
+    booked_services: Schema.Attribute.Relation<
+      'manyToMany',
+      'api::service.service'
+    >;
     BookingStatus: Schema.Attribute.Enumeration<
       ['Confirmed', 'Completed', 'Cancelled', 'No-Show']
     >;
@@ -526,7 +530,38 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
     > &
       Schema.Attribute.Private;
     publishedAt: Schema.Attribute.DateTime;
-    service: Schema.Attribute.Relation<'manyToOne', 'api::service.service'>;
+    SelectedStaff: Schema.Attribute.Relation<'oneToOne', 'api::staff.staff'>;
+    TotalAmount: Schema.Attribute.Decimal;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiBookingPolicyBookingPolicy extends Struct.SingleTypeSchema {
+  collectionName: 'booking_policies';
+  info: {
+    displayName: 'BookingPolicy';
+    pluralName: 'booking-policies';
+    singularName: 'booking-policy';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::booking-policy.booking-policy'
+    > &
+      Schema.Attribute.Private;
+    PolicyContent: Schema.Attribute.Blocks;
+    publishedAt: Schema.Attribute.DateTime;
+    ShowBeforePayment: Schema.Attribute.Boolean &
+      Schema.Attribute.DefaultTo<false>;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
       Schema.Attribute.Private;
@@ -545,6 +580,10 @@ export interface ApiBookingSettingBookingSetting
     draftAndPublish: true;
   };
   attributes: {
+    available_staffs: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::staff.staff'
+    >;
     BookingWindowHours: Schema.Attribute.Integer;
     createdAt: Schema.Attribute.DateTime;
     createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -720,8 +759,8 @@ export interface ApiServiceService extends Struct.CollectionTypeSchema {
     draftAndPublish: true;
   };
   attributes: {
-    appointments: Schema.Attribute.Relation<
-      'oneToMany',
+    booked_appointments: Schema.Attribute.Relation<
+      'manyToMany',
       'api::appointment.appointment'
     >;
     createdAt: Schema.Attribute.DateTime;
@@ -730,6 +769,7 @@ export interface ApiServiceService extends Struct.CollectionTypeSchema {
     Deposit: Schema.Attribute.Decimal & Schema.Attribute.DefaultTo<10000>;
     Description: Schema.Attribute.Blocks;
     Duration: Schema.Attribute.Integer & Schema.Attribute.Required;
+    IsAddOn: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<false>;
     locale: Schema.Attribute.String & Schema.Attribute.Private;
     localizations: Schema.Attribute.Relation<
       'oneToMany',
@@ -741,6 +781,32 @@ export interface ApiServiceService extends Struct.CollectionTypeSchema {
     OnSaleTitle: Schema.Attribute.String;
     Picture: Schema.Attribute.Media<'images' | 'files' | 'videos' | 'audios'>;
     Price: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    publishedAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
+export interface ApiStaffStaff extends Struct.CollectionTypeSchema {
+  collectionName: 'staffs';
+  info: {
+    displayName: 'Staff';
+    pluralName: 'staffs';
+    singularName: 'staff';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    IsAvailable: Schema.Attribute.Boolean & Schema.Attribute.DefaultTo<true>;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::staff.staff'> &
+      Schema.Attribute.Private;
+    Name: Schema.Attribute.String;
     publishedAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
@@ -1298,12 +1364,14 @@ declare module '@strapi/strapi' {
       'api::about-page.about-page': ApiAboutPageAboutPage;
       'api::academy-page.academy-page': ApiAcademyPageAcademyPage;
       'api::appointment.appointment': ApiAppointmentAppointment;
+      'api::booking-policy.booking-policy': ApiBookingPolicyBookingPolicy;
       'api::booking-setting.booking-setting': ApiBookingSettingBookingSetting;
       'api::global.global': ApiGlobalGlobal;
       'api::homepage.homepage': ApiHomepageHomepage;
       'api::payment.payment': ApiPaymentPayment;
       'api::promotion.promotion': ApiPromotionPromotion;
       'api::service.service': ApiServiceService;
+      'api::staff.staff': ApiStaffStaff;
       'api::testimonial.testimonial': ApiTestimonialTestimonial;
       'plugin::content-releases.release': PluginContentReleasesRelease;
       'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
