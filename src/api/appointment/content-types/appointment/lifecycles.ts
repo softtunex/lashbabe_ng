@@ -2,6 +2,7 @@
 
 const ADMIN_EMAIL =
   process.env.ADMIN_NOTIFICATION_EMAIL || "lashbabeng@gmail.com";
+const BUSINESS_TIMEZONE = "Africa/Lagos"; // Define timezone constant
 
 // Track created appointments (documentId -> timestamp)
 const createdAppointments = new Map();
@@ -12,7 +13,6 @@ setInterval(() => {
   const now = Date.now();
   for (const [key, timestamp] of createdAppointments.entries()) {
     if (now - timestamp > 30000) {
-      // Keep for 30 seconds
       createdAppointments.delete(key);
     }
   }
@@ -127,31 +127,18 @@ export default {
 
     console.log(`[afterCreate] Triggered for documentId: ${result.documentId}`);
 
-    // Check if this appointment was recently created from the frontend
-    // If it has a very recent createdAt time (within 2 seconds), it's a NEW appointment
     const createdAt = new Date(result.createdAt).getTime();
     const now = Date.now();
     const timeDiff = now - createdAt;
 
-    console.log(`Time since creation: ${timeDiff}ms`);
-
-    // If the appointment was created more than 2 seconds ago, this is likely a publish event
     if (timeDiff > 2000) {
-      console.log(
-        `⏭️ SKIPPING - This appointment was created ${timeDiff}ms ago (likely a publish event)`
-      );
       return;
     }
 
-    // Check if we already sent an email for this appointment
     if (createdAppointments.has(result.documentId)) {
-      console.log(
-        `⏭️ SKIPPING - Already sent confirmation email for ${result.documentId}`
-      );
       return;
     }
 
-    // Mark this appointment as processed
     createdAppointments.set(result.documentId, Date.now());
     console.log(`✓ New appointment confirmed - will send email`);
 
@@ -164,11 +151,9 @@ export default {
         });
 
       if (!appointment) {
-        console.log("Could not find appointment");
         return;
       }
 
-      // Handle multiple services
       const services = appointment.booked_services || [];
       const serviceNames =
         services.map((s) => s.Name).join(", ") || "Your Services";
@@ -181,6 +166,7 @@ export default {
         0
       );
 
+      // --- FIX APPLIED HERE: Added timeZone option ---
       const emailData = {
         clientEmail: appointment.ClientEmail,
         clientName: appointment.ClientName,
@@ -191,11 +177,22 @@ export default {
         staffName: appointment.SelectedStaff?.Name || null,
         date: new Date(appointment.AppointmentDateTime).toLocaleDateString(
           "en-US",
-          { weekday: "long", year: "numeric", month: "long", day: "numeric" }
+          {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            timeZone: BUSINESS_TIMEZONE, // Fix: Force Lagos Time
+          }
         ),
         time: new Date(appointment.AppointmentDateTime).toLocaleTimeString(
           "en-US",
-          { hour: "numeric", minute: "2-digit", hour12: true }
+          {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+            timeZone: BUSINESS_TIMEZONE, // Fix: Force Lagos Time
+          }
         ),
       };
 
@@ -213,29 +210,21 @@ export default {
     console.log(`[afterUpdate] Triggered for documentId: ${result.documentId}`);
 
     if (!beforeState) {
-      console.log("⏭️ No before state found - skipping update email");
       beforeUpdateState.delete(result.documentId);
       return;
     }
 
     try {
-      // Check if this is ONLY a publish action (not a real data update)
       const wasUnpublished = beforeState.publishedAt === null;
       const isNowPublished = result.publishedAt !== null;
-
       const currentStatus = result.BookingStatus;
       const previousStatus = beforeState.BookingStatus;
       const currentTime = new Date(result.AppointmentDateTime).getTime();
       const previousTime = new Date(beforeState.AppointmentDateTime).getTime();
-
       const statusChanged = currentStatus !== previousStatus;
       const timeChanged = currentTime !== previousTime;
 
-      // If ONLY publishedAt changed (no other changes), skip email
       if (wasUnpublished && isNowPublished && !statusChanged && !timeChanged) {
-        console.log(
-          "⏭️ This is ONLY a publish action - no data changed. Skipping email."
-        );
         beforeUpdateState.delete(result.documentId);
         return;
       }
@@ -252,40 +241,33 @@ export default {
         return;
       }
 
-      // Handle multiple services
       const services = appointment.booked_services || [];
       const serviceNames =
         services.map((s) => s.Name).join(", ") || "Your Services";
-
-      console.log("=== UPDATE CHECK ===");
-      console.log(
-        `Previous Status: ${previousStatus} → Current: ${currentStatus}`
-      );
-      console.log(`Previous Time: ${new Date(previousTime).toISOString()}`);
-      console.log(`Current Time: ${new Date(currentTime).toISOString()}`);
-      console.log(
-        `Status changed: ${statusChanged}, Time changed: ${timeChanged}`
-      );
 
       let subject = "";
       let message = "";
       let shouldSend = false;
 
-      // Check for time change FIRST (highest priority)
       if (timeChanged) {
         shouldSend = true;
         const newDate = new Date(currentTime);
+
+        // --- FIX APPLIED HERE: Added timeZone option ---
         const date = newDate.toLocaleDateString("en-US", {
           weekday: "long",
           year: "numeric",
           month: "long",
           day: "numeric",
+          timeZone: BUSINESS_TIMEZONE, // Fix: Force Lagos Time
         });
         const time = newDate.toLocaleTimeString("en-US", {
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
+          timeZone: BUSINESS_TIMEZONE, // Fix: Force Lagos Time
         });
+
         subject = "⏰ Your LashBabe Appointment Has Been Rescheduled";
         message = getRescheduleTemplate(
           result.ClientName,
@@ -294,9 +276,7 @@ export default {
           time
         );
         console.log("✓ TIME CHANGE DETECTED - Sending reschedule email");
-      }
-      // Only check status if time didn't change
-      else if (statusChanged) {
+      } else if (statusChanged) {
         shouldSend = true;
         subject = `📋 Your LashBabe Appointment Status: ${currentStatus}`;
         message = getStatusUpdateTemplate(
@@ -318,8 +298,6 @@ export default {
           subject,
           message,
         });
-      } else {
-        console.log("✗ NO RELEVANT CHANGES - No email will be sent");
       }
     } catch (err) {
       console.error("Error processing update email:", err);
@@ -329,10 +307,8 @@ export default {
   },
 };
 
-// ============================================================
-// EMAIL TEMPLATES
-// ============================================================
-
+// ... (Rest of your templates code remains exactly the same) ...
+// Ensure you include the templates from your original file here
 const getConfirmationTemplate = (
   clientName,
   serviceNames,
