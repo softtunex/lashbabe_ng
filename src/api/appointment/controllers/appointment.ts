@@ -15,7 +15,7 @@ export default factories.createCoreController(
           return ctx.badRequest("Date parameter is required");
         }
 
-        // Parse the date and create start/end of day
+        // Parse the date
         const startOfDay = new Date(date);
         startOfDay.setHours(0, 0, 0, 0);
 
@@ -31,17 +31,28 @@ export default factories.createCoreController(
                 $gte: startOfDay.toISOString(),
                 $lte: endOfDay.toISOString(),
               },
+              BookingStatus: {
+                $ne: "Cancelled", // Don't block slots if the appointment was cancelled
+              },
             },
             fields: ["AppointmentDateTime"],
           }
         );
 
-        // Extract time slots in HH:MM format
+        // --- THE FIX IS HERE ---
         const bookedSlots = appointments.map((appointment: any) => {
           const dateTime = new Date(appointment.AppointmentDateTime);
-          const hours = dateTime.getHours().toString().padStart(2, "0");
-          const minutes = dateTime.getMinutes().toString().padStart(2, "0");
-          return `${hours}:${minutes}`;
+
+          // Instead of .getHours(), we force it to format as Nigeria Time
+          // "en-GB" ensures we get "09:00" format (24 hour) instead of "9:00 AM"
+          const timeString = dateTime.toLocaleTimeString("en-GB", {
+            timeZone: "Africa/Lagos",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          });
+
+          return timeString;
         });
 
         // Return the booked time slots
