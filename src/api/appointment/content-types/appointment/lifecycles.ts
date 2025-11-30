@@ -2,7 +2,12 @@
 
 const ADMIN_EMAIL =
   process.env.ADMIN_NOTIFICATION_EMAIL || "lashbabeng@gmail.com";
-const BUSINESS_TIMEZONE = "Africa/Lagos"; // Define timezone constant
+const BUSINESS_TIMEZONE = "Africa/Lagos";
+
+// --- FOOTER DETAILS ---
+const BUSINESS_ADDRESS = "No. 10, Ayato Street, Iwaya, Yaba, Lagos"; // Update this
+const BUSINESS_PHONE = "09134386487";
+const POLICY_URL = "https://lashbabeng.com/policy";
 
 // Track created appointments (documentId -> timestamp)
 const createdAppointments = new Map();
@@ -166,7 +171,6 @@ export default {
         0
       );
 
-      // --- FIX APPLIED HERE: Added timeZone option ---
       const emailData = {
         clientEmail: appointment.ClientEmail,
         clientName: appointment.ClientName,
@@ -182,7 +186,7 @@ export default {
             year: "numeric",
             month: "long",
             day: "numeric",
-            timeZone: BUSINESS_TIMEZONE, // Fix: Force Lagos Time
+            timeZone: BUSINESS_TIMEZONE,
           }
         ),
         time: new Date(appointment.AppointmentDateTime).toLocaleTimeString(
@@ -191,7 +195,7 @@ export default {
             hour: "numeric",
             minute: "2-digit",
             hour12: true,
-            timeZone: BUSINESS_TIMEZONE, // Fix: Force Lagos Time
+            timeZone: BUSINESS_TIMEZONE,
           }
         ),
       };
@@ -253,19 +257,18 @@ export default {
         shouldSend = true;
         const newDate = new Date(currentTime);
 
-        // --- FIX APPLIED HERE: Added timeZone option ---
         const date = newDate.toLocaleDateString("en-US", {
           weekday: "long",
           year: "numeric",
           month: "long",
           day: "numeric",
-          timeZone: BUSINESS_TIMEZONE, // Fix: Force Lagos Time
+          timeZone: BUSINESS_TIMEZONE,
         });
         const time = newDate.toLocaleTimeString("en-US", {
           hour: "numeric",
           minute: "2-digit",
           hour12: true,
-          timeZone: BUSINESS_TIMEZONE, // Fix: Force Lagos Time
+          timeZone: BUSINESS_TIMEZONE,
         });
 
         subject = "⏰ Your LashBabe Appointment Has Been Rescheduled";
@@ -307,8 +310,41 @@ export default {
   },
 };
 
-// ... (Rest of your templates code remains exactly the same) ...
-// Ensure you include the templates from your original file here
+// ============================================================
+// 🎨 SHARED FOOTER (NEW)
+// ============================================================
+
+const getEmailFooter = () => `
+  <tr>
+    <td style="background-color: #1a1a1a; padding: 40px 20px; text-align: center; border-top: 4px solid #d4af37;">
+      <p style="color: #ffffff; font-size: 22px; margin: 0 0 10px 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 600; letter-spacing: 0.5px;">LashBabe</p>
+      
+      <p style="color: #cccccc; font-size: 14px; margin: 0 0 20px 0; line-height: 1.6;">
+        Elevating beauty and building lash professionals.
+      </p>
+
+      <div style="border-top: 1px solid #333333; margin: 20px auto; width: 80%;"></div>
+
+      <p style="color: #999999; font-size: 13px; margin: 0 0 5px 0;">
+        📍 ${BUSINESS_ADDRESS}
+      </p>
+      <p style="color: #999999; font-size: 13px; margin: 0 0 20px 0;">
+        📞 <a href="tel:${BUSINESS_PHONE}" style="color:#999999; text-decoration:none;">${BUSINESS_PHONE}</a>
+      </p>
+
+      <div style="margin-top: 25px;">
+        <a href="${POLICY_URL}" style="color: #ffffff; text-decoration: none; font-size: 13px; margin: 0 10px; border-bottom: 1px dotted #ffffff;">Booking Policy</a>
+        <span style="color: #666;">|</span>
+        <a href="mailto:${ADMIN_EMAIL}" style="color: #ffffff; text-decoration: none; font-size: 13px; margin: 0 10px; border-bottom: 1px dotted #ffffff;">Contact Us</a>
+      </div>
+    </td>
+  </tr>
+`;
+
+// ============================================================
+// EMAIL TEMPLATES
+// ============================================================
+
 const getConfirmationTemplate = (
   clientName,
   serviceNames,
@@ -323,103 +359,111 @@ const getConfirmationTemplate = (
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background-color: #f0f0f0;">
+<body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #f0f0f0;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
     <tr>
       <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; overflow: hidden;">
+        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
           <tr>
             <td style="background-color: #1a1a1a; padding: 50px 40px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 36px; font-weight: 700; font-family: 'Playfair Display', Georgia, serif; letter-spacing: 0.5px;">✨ Booking Confirmed!</h1>
+              <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-weight: 700; font-family: 'Playfair Display', serif;">✨ Booking Confirmed!</h1>
             </td>
           </tr>
           <tr>
             <td style="padding: 50px 40px;">
-              <p style="color: #1a1a1a; font-size: 17px; line-height: 1.6; margin: 0 0 8px 0; font-weight: 500;">
-                Hi <strong>${clientName}</strong>,
+              <p style="color: #1a1a1a; font-size: 17px;">Hi <strong>${clientName}</strong>,</p>
+              <p style="color: #666; font-size: 16px; margin-bottom: 30px;">We're excited to see you! Here are your appointment details:</p>
+              
+              <div style="background-color: #f9f9f9; padding: 30px; border-radius: 8px; border: 1px solid #eeeeee;">
+                <h2 style="color: #1a1a1a; margin: 0 0 20px 0; font-size: 24px; font-family: 'Playfair Display', serif;">${serviceNames}</h2>
+                <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                  ${staffName ? `<tr><td style="padding: 5px 0; color:#444;"><strong>Technician:</strong></td><td style="text-align:right;">${staffName}</td></tr>` : ""}
+                  <tr><td style="padding: 5px 0; color:#444;"><strong>Date:</strong></td><td style="text-align:right;">${date}</td></tr>
+                  <tr><td style="padding: 5px 0; color:#444;"><strong>Time:</strong></td><td style="text-align:right;">${time}</td></tr>
+                  ${duration ? `<tr><td style="padding: 5px 0; color:#444;"><strong>Duration:</strong></td><td style="text-align:right;">${duration}</td></tr>` : ""}
+                  <tr><td style="padding: 15px 0 5px 0; color:#1a1a1a; font-size:18px;"><strong>Deposit Paid:</strong></td><td style="padding: 15px 0 5px 0; text-align:right; font-size:18px; font-weight:bold;">${deposit}</td></tr>
+                </table>
+              </div>
+
+              <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                Please remember to review our <a href="${POLICY_URL}" style="color:#1a1a1a; text-decoration:underline;">booking policy</a> regarding arrival times and guests.
               </p>
-              <p style="color: #888888; font-size: 16px; line-height: 1.7; margin: 0 0 40px 0;">
-                We're excited to confirm your appointment! Here are the details:
-              </p>
-              <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f0f0f0; margin-bottom: 40px;">
-                <tr>
-                  <td style="padding: 40px 35px;">
-                    <h2 style="color: #1a1a1a; margin: 0 0 30px 0; font-size: 26px; font-weight: 600; font-family: 'Playfair Display', Georgia, serif; line-height: 1.3;">${serviceNames}</h2>
-                    <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                      ${
-                        staffName
-                          ? `
-                      <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #d0d0d0;">
-                          <span style="color: #888888; font-size: 15px; font-weight: 500;">👤 Technician</span>
-                        </td>
-                        <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid #d0d0d0;">
-                          <strong style="color: #1a1a1a; font-size: 15px; font-weight: 600;">${staffName}</strong>
-                        </td>
-                      </tr>`
-                          : ""
-                      }
-                      <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #d0d0d0;">
-                          <span style="color: #888888; font-size: 15px; font-weight: 500;">📅 Date</span>
-                        </td>
-                        <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid #d0d0d0;">
-                          <strong style="color: #1a1a1a; font-size: 15px; font-weight: 600;">${date}</strong>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #d0d0d0;">
-                          <span style="color: #888888; font-size: 15px; font-weight: 500;">🕐 Time</span>
-                        </td>
-                        <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid #d0d0d0;">
-                          <strong style="color: #1a1a1a; font-size: 15px; font-weight: 600;">${time}</strong>
-                        </td>
-                      </tr>
-                      ${
-                        duration
-                          ? `
-                      <tr>
-                        <td style="padding: 12px 0; border-bottom: 1px solid #d0d0d0;">
-                          <span style="color: #888888; font-size: 15px; font-weight: 500;">⏱️ Duration</span>
-                        </td>
-                        <td style="padding: 12px 0; text-align: right; border-bottom: 1px solid #d0d0d0;">
-                          <strong style="color: #1a1a1a; font-size: 15px; font-weight: 600;">${duration}</strong>
-                        </td>
-                      </tr>`
-                          : ""
-                      }
-                      <tr>
-                        <td style="padding: 12px 0;">
-                          <span style="color: #888888; font-size: 15px; font-weight: 500;">💰 Deposit Paid</span>
-                        </td>
-                        <td style="padding: 12px 0; text-align: right;">
-                          <strong style="color: #1a1a1a; font-size: 18px; font-weight: 600;">${deposit}</strong>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-              </table>
-              <p style="color: #1a1a1a; font-size: 17px; line-height: 1.6; margin: 0 0 15px 0; font-weight: 500;">
-                We look forward to pampering you! 💅
-              </p>
-              <p style="color: #888888; font-size: 14px; line-height: 1.7; margin: 35px 0 0 0; padding-top: 35px; border-top: 1px solid #e0e0e0;">
-                Need to reschedule or have questions? Feel free to reach out to us anytime.
-              </p>
+            </td>
+          </tr>
+          ${getEmailFooter()}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+const getRescheduleTemplate = (clientName, serviceNames, date, time) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #f0f0f0;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+          <tr>
+            <td style="background-color: #1a1a1a; padding: 45px 40px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-family: 'Playfair Display', serif;">⏰ Rescheduled</h1>
             </td>
           </tr>
           <tr>
-            <td style="background-color: #1a1a1a; padding: 35px 40px; text-align: center;">
-              <p style="color: #ffffff; font-size: 20px; margin: 0 0 8px 0; font-family: 'Playfair Display', Georgia, serif; font-weight: 600; letter-spacing: 0.5px;">LashBabe</p>
-              <p style="color: #888888; font-size: 14px; margin: 0; line-height: 1.6;">
-                Elevating beauty and building lash professionals.
-              </p>
+            <td style="padding: 45px 40px;">
+              <p style="font-size: 16px;">Hi <strong>${clientName}</strong>,</p>
+              <p style="font-size: 16px; color: #666;">Your appointment for <strong>${serviceNames}</strong> has been moved to a new time:</p>
+              
+              <div style="background-color: #f0f0f0; padding: 25px; text-align: center; border-radius: 8px; margin: 30px 0;">
+                <h2 style="margin: 0; color: #1a1a1a;">${date}</h2>
+                <h3 style="margin: 10px 0 0 0; color: #1a1a1a;">${time}</h3>
+              </div>
             </td>
           </tr>
+          ${getEmailFooter()}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+const getStatusUpdateTemplate = (clientName, serviceNames, status) => `
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #f0f0f0;">
+  <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <tr>
+      <td align="center" style="padding: 40px 20px;">
+        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 8px; overflow: hidden;">
+          <tr>
+            <td style="background-color: #1a1a1a; padding: 45px 40px; text-align: center;">
+              <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-family: 'Playfair Display', serif;">📋 Status Update</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 45px 40px;">
+              <p style="font-size: 16px;">Hi <strong>${clientName}</strong>,</p>
+              <p style="font-size: 16px; color: #666;">The status of your appointment for <strong>${serviceNames}</strong> has changed.</p>
+              
+              <div style="background-color: #1a1a1a; color: #ffffff; padding: 20px; text-align: center; border-radius: 8px; margin: 30px 0;">
+                <h2 style="margin: 0; letter-spacing: 1px;">${status.toUpperCase()}</h2>
+              </div>
+            </td>
+          </tr>
+          ${getEmailFooter()}
         </table>
       </td>
     </tr>
@@ -466,68 +510,6 @@ const getAdminNotificationTemplate = (
               <p><strong>Date:</strong> ${date}</p>
               <p><strong>Time:</strong> ${time}</p>
               <p><strong>Deposit:</strong> ${deposit}</p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-`;
-
-const getRescheduleTemplate = (clientName, serviceNames, date, time) => `
-<!DOCTYPE html>
-<html>
-<head>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #f0f0f0;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff;">
-          <tr>
-            <td style="background-color: #1a1a1a; padding: 45px 40px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-family: 'Playfair Display', Georgia, serif;">⏰ Rescheduled</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 45px 40px;">
-              <p>Hi ${clientName},</p>
-              <p>Your appointment for <strong>${serviceNames}</strong> has been rescheduled to:</p>
-              <h2 style="text-align:center; background:#f0f0f0; padding:25px;">${date} at ${time}</h2>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-`;
-
-const getStatusUpdateTemplate = (clientName, serviceNames, status) => `
-<!DOCTYPE html>
-<html>
-<head>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #f0f0f0;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse;">
-    <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" style="width: 600px; max-width: 100%; border-collapse: collapse; background-color: #ffffff;">
-          <tr>
-            <td style="background-color: #1a1a1a; padding: 45px 40px; text-align: center;">
-              <h1 style="color: #ffffff; margin: 0; font-size: 32px; font-family: 'Playfair Display', Georgia, serif;">📋 Status Update</h1>
-            </td>
-          </tr>
-          <tr>
-            <td style="padding: 45px 40px;">
-              <p>Hi ${clientName},</p>
-              <p>Your appointment for <strong>${serviceNames}</strong> status is now:</p>
-              <h2 style="text-align:center; background:#1a1a1a; color:#fff; padding:25px;">${status}</h2>
             </td>
           </tr>
         </table>
