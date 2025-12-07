@@ -5,7 +5,7 @@ const ADMIN_EMAIL =
 const BUSINESS_TIMEZONE = "Africa/Lagos";
 
 // --- FOOTER DETAILS ---
-const BUSINESS_ADDRESS = "No. 10, Ayato Street, Iwaya, Yaba, Lagos"; // Update this
+const BUSINESS_ADDRESS = "No. 10, Ayato Street, Iwaya, Yaba, Lagos";
 const BUSINESS_PHONE = "09134386487";
 const POLICY_URL = "https://lashbabeng.com/policy";
 
@@ -41,6 +41,7 @@ const sendNewAppointmentEmails = async (data) => {
   } = data;
 
   try {
+    // 1. Send to Client
     await strapi.plugins["email"].services.email.send({
       to: clientEmail,
       subject: "✨ Your LashBabe Appointment is Confirmed!",
@@ -54,8 +55,9 @@ const sendNewAppointmentEmails = async (data) => {
         staffName
       ),
     });
-    console.log(`✓ Confirmation email sent to ${clientEmail}`);
+    strapi.log.info(`✓ Confirmation email sent to ${clientEmail}`);
 
+    // 2. Send to Admin
     await strapi.plugins["email"].services.email.send({
       to: ADMIN_EMAIL,
       subject: `🔔 New Booking: ${serviceNames} - ${clientName}`,
@@ -71,30 +73,43 @@ const sendNewAppointmentEmails = async (data) => {
         staffName
       ),
     });
-    console.log(`✓ Admin notification sent`);
+    strapi.log.info(`✓ Admin notification sent`);
   } catch (err) {
-    console.error("❌ Email Sending Failed:", err);
+    strapi.log.error("❌ Email Sending Failed:", err);
   }
 };
 
 const sendUpdateEmails = async (data) => {
-  const { clientEmail, clientName, serviceNames, subject, message } = data;
+  // Added 'adminMessage' and 'adminSubject' to separate the logic
+  const {
+    clientEmail,
+    clientName,
+    serviceNames,
+    subject,
+    message,
+    adminMessage,
+    adminSubject,
+  } = data;
 
   try {
+    // 1. Send to Client
     await strapi.plugins["email"].services.email.send({
       to: clientEmail,
       subject: subject,
       html: message,
     });
 
+    // 2. Send to Admin (Use specific admin message if provided, otherwise fallback)
     await strapi.plugins["email"].services.email.send({
       to: ADMIN_EMAIL,
-      subject: `🔔 Updated: ${serviceNames} - ${clientName}`,
-      html: message,
+      subject: adminSubject || `🔔 Updated: ${serviceNames} - ${clientName}`,
+      html: adminMessage || message, // <--- This fixes the "Admin gets Client email" issue
     });
-    console.log("✓ Update emails sent successfully.");
+    strapi.log.info(
+      "✓ Update emails sent successfully (Separated Client/Admin)."
+    );
   } catch (err) {
-    console.error("❌ Update Email Failed:", err);
+    strapi.log.error("❌ Update Email Failed:", err);
   }
 };
 
@@ -130,7 +145,15 @@ export default {
   async afterCreate(event) {
     const { result } = event;
 
-    console.log(`[afterCreate] Triggered for documentId: ${result.documentId}`);
+    strapi.log.info(
+      `[afterCreate] Triggered for documentId: ${result.documentId} | Status: ${result.BookingStatus}`
+    );
+
+    // --- FIX 1: Ignore "Pending" appointments ---
+    if (result.BookingStatus === "Pending") {
+      strapi.log.info("Status is Pending. Skipping emails.");
+      return;
+    }
 
     const createdAt = new Date(result.createdAt).getTime();
     const now = Date.now();
@@ -145,7 +168,7 @@ export default {
     }
 
     createdAppointments.set(result.documentId, Date.now());
-    console.log(`✓ New appointment confirmed - will send email`);
+    strapi.log.info(`✓ New appointment confirmed - will send email`);
 
     try {
       const appointment = await strapi
@@ -155,9 +178,7 @@ export default {
           populate: ["booked_services", "SelectedStaff"],
         });
 
-      if (!appointment) {
-        return;
-      }
+      if (!appointment) return;
 
       const services = appointment.booked_services || [];
       const serviceNames =
@@ -200,8 +221,7 @@ export default {
         ),
       };
 
-      console.log(`Sending confirmation email to ${emailData.clientEmail}`);
-      sendNewAppointmentEmails(emailData);
+      await sendNewAppointmentEmails(emailData);
     } catch (err) {
       console.error("Error preparing email data:", err);
     }
@@ -211,16 +231,16 @@ export default {
     const { result } = event;
     const beforeState = beforeUpdateState.get(result.documentId);
 
-    console.log(`[afterUpdate] Triggered for documentId: ${result.documentId}`);
+    // Always cleanup
+    beforeUpdateState.delete(result.documentId);
 
-    if (!beforeState) {
-      beforeUpdateState.delete(result.documentId);
-      return;
-    }
+    strapi.log.info(
+      `[afterUpdate] Triggered for documentId: ${result.documentId}`
+    );
+
+    if (!beforeState) return;
 
     try {
-      const wasUnpublished = beforeState.publishedAt === null;
-      const isNowPublished = result.publishedAt !== null;
       const currentStatus = result.BookingStatus;
       const previousStatus = beforeState.BookingStatus;
       const currentTime = new Date(result.AppointmentDateTime).getTime();
@@ -228,10 +248,69 @@ export default {
       const statusChanged = currentStatus !== previousStatus;
       const timeChanged = currentTime !== previousTime;
 
-      if (wasUnpublished && isNowPublished && !statusChanged && !timeChanged) {
-        beforeUpdateState.delete(result.documentId);
-        return;
+      // --- FIX 2: Detect Payment Success (Pending -> Confirmed) ---
+      // This solves the issue of missing emails when the status updates from Pending
+      if (previousStatus === "Pending" && currentStatus === "Confirmed") {
+        strapi.log.info(
+          "✓ PAYMENT SUCCESS DETECTED (Pending -> Confirmed). Sending Welcome Emails."
+        );
+
+        // Re-fetch to get full details (services, staff)
+        const appointment = await strapi
+          .documents("api::appointment.appointment")
+          .findOne({
+            documentId: result.documentId,
+            populate: ["booked_services", "SelectedStaff"],
+          });
+
+        if (appointment) {
+          const services = appointment.booked_services || [];
+          const serviceNames =
+            services.map((s) => s.Name).join(", ") || "Your Services";
+          const totalDuration = services.reduce(
+            (sum, s) => sum + (s.Duration || 0),
+            0
+          );
+          const totalDeposit = services.reduce(
+            (sum, s) => sum + (s.Deposit || 0),
+            0
+          );
+
+          const emailData = {
+            clientEmail: appointment.ClientEmail,
+            clientName: appointment.ClientName,
+            clientPhone: appointment.ClientPhone,
+            serviceNames: serviceNames,
+            deposit: `₦${Number(totalDeposit).toLocaleString()}`,
+            duration: totalDuration > 0 ? `${totalDuration} mins` : "",
+            staffName: appointment.SelectedStaff?.Name || null,
+            date: new Date(appointment.AppointmentDateTime).toLocaleDateString(
+              "en-US",
+              {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                timeZone: BUSINESS_TIMEZONE,
+              }
+            ),
+            time: new Date(appointment.AppointmentDateTime).toLocaleTimeString(
+              "en-US",
+              {
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: BUSINESS_TIMEZONE,
+              }
+            ),
+          };
+          await sendNewAppointmentEmails(emailData);
+        }
+        return; // STOP HERE so we don't trigger "Status Change" email too
       }
+
+      // If still pending, ignore
+      if (currentStatus === "Pending") return;
 
       const appointment = await strapi
         .documents("api::appointment.appointment")
@@ -240,10 +319,7 @@ export default {
           populate: ["booked_services", "SelectedStaff"],
         });
 
-      if (!appointment) {
-        beforeUpdateState.delete(result.documentId);
-        return;
-      }
+      if (!appointment) return;
 
       const services = appointment.booked_services || [];
       const serviceNames =
@@ -251,12 +327,15 @@ export default {
 
       let subject = "";
       let message = "";
+      let adminMessage = "";
+      let adminSubject = "";
       let shouldSend = false;
+
+      // --- FIX 3: Separate Admin/Client Logic ---
 
       if (timeChanged) {
         shouldSend = true;
         const newDate = new Date(currentTime);
-
         const date = newDate.toLocaleDateString("en-US", {
           weekday: "long",
           year: "numeric",
@@ -278,7 +357,17 @@ export default {
           date,
           time
         );
-        console.log("✓ TIME CHANGE DETECTED - Sending reschedule email");
+
+        // Specific Admin Message
+        adminSubject = `⚠️ Rescheduled: ${result.ClientName}`;
+        adminMessage = getAdminSimpleTemplate(
+          "Rescheduled",
+          result.ClientName,
+          serviceNames,
+          `New time: ${date} at ${time}`
+        );
+
+        strapi.log.info("✓ TIME CHANGE DETECTED - Sending reschedule email");
       } else if (statusChanged) {
         shouldSend = true;
         subject = `📋 Your LashBabe Appointment Status: ${currentStatus}`;
@@ -287,31 +376,41 @@ export default {
           serviceNames,
           currentStatus
         );
-        console.log(
+
+        // Specific Admin Message
+        adminSubject = `ℹ️ Status Change: ${result.ClientName} -> ${currentStatus}`;
+        adminMessage = getAdminSimpleTemplate(
+          "Status Update",
+          result.ClientName,
+          serviceNames,
+          `New Status: ${currentStatus}`
+        );
+
+        strapi.log.info(
           `✓ STATUS CHANGE DETECTED - From "${previousStatus}" to "${currentStatus}"`
         );
       }
 
       if (shouldSend) {
-        console.log(`Sending update email to ${result.ClientEmail}`);
-        sendUpdateEmails({
+        strapi.log.info(`Sending update email to ${result.ClientEmail}`);
+        await sendUpdateEmails({
           clientEmail: result.ClientEmail,
           clientName: result.ClientName,
           serviceNames,
           subject,
           message,
+          adminMessage, // Pass the distinct admin message
+          adminSubject, // Pass the distinct admin subject
         });
       }
     } catch (err) {
       console.error("Error processing update email:", err);
-    } finally {
-      beforeUpdateState.delete(result.documentId);
     }
   },
 };
 
 // ============================================================
-// 🎨 SHARED FOOTER (NEW)
+// 🎨 SHARED FOOTER & TEMPLATES
 // ============================================================
 
 const getEmailFooter = () => `
@@ -468,6 +567,22 @@ const getStatusUpdateTemplate = (clientName, serviceNames, status) => `
       </td>
     </tr>
   </table>
+</body>
+</html>
+`;
+
+// NEW ADMIN ALERT TEMPLATE (Used for Reschedule & Status)
+const getAdminSimpleTemplate = (title, clientName, serviceNames, details) => `
+<!DOCTYPE html>
+<html>
+<body style="font-family: sans-serif; padding: 20px; background: #fff;">
+  <h2 style="color: #1a1a1a;">${title}</h2>
+  <p><strong>Client:</strong> ${clientName}</p>
+  <p><strong>Service:</strong> ${serviceNames}</p>
+  <div style="background: #f0f0f0; padding: 15px; border-radius: 5px; margin: 15px 0;">
+    ${details}
+  </div>
+  <p><em>The client has been notified automatically via email.</em></p>
 </body>
 </html>
 `;

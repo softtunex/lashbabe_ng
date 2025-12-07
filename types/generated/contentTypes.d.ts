@@ -515,7 +515,7 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
       'api::service.service'
     >;
     BookingStatus: Schema.Attribute.Enumeration<
-      ['Confirmed', 'Completed', 'Cancelled', 'No-Show']
+      ['Pending', 'Confirmed', 'Completed', 'Cancelled', 'No-Show']
     >;
     ClientEmail: Schema.Attribute.Email;
     ClientName: Schema.Attribute.String & Schema.Attribute.Required;
