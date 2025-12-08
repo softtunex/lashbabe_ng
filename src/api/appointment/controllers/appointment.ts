@@ -20,7 +20,7 @@ export default factories.createCoreController(
           return ctx.badRequest("Date parameter is required");
         }
 
-        // Parse the date
+        // Parse the date range
         const startOfDay = new Date(date);
         startOfDay.setHours(0, 0, 0, 0);
 
@@ -36,9 +36,9 @@ export default factories.createCoreController(
                 $gte: startOfDay.toISOString(),
                 $lte: endOfDay.toISOString(),
               },
-              // BLOCK SLOTS if they are Confirmed OR Pending (someone is paying)
+              // Block slots that are Confirmed, Completed, or Pending
               BookingStatus: {
-                $ne: "Cancelled",
+                $in: ["Confirmed", "Pending", "Completed"],
               },
             },
             fields: ["AppointmentDateTime"],
@@ -72,26 +72,31 @@ export default factories.createCoreController(
     /**
      * Webhook Handler for Paystack
      * POST /api/appointments/paystack-webhook
+     *
+     * Handles "Passive Recovery": If the frontend failed to create the booking
+     * (e.g., user closed app), this creates it using metadata.
      */
     async paystackWebhook(ctx) {
       try {
         const secret = process.env.PAYSTACK_SECRET_KEY;
+        const signature = ctx.request.headers["x-paystack-signature"];
 
         if (!secret) {
           strapi.log.error("[Webhook] Missing PAYSTACK_SECRET_KEY in .env");
-          return ctx.internalServerError("Configuration error");
+          return ctx.internalServerError("Server configuration error");
+        }
+
+        if (!signature) {
+          return ctx.unauthorized("Missing signature");
         }
 
         // 1. Verify Signature (Security Check)
-        // Paystack sends a signature in the header to prove it's really them
         const hash = crypto
           .createHmac("sha512", secret)
           .update(JSON.stringify(ctx.request.body))
           .digest("hex");
 
-        const paystackSignature = ctx.request.headers["x-paystack-signature"];
-
-        if (hash !== paystackSignature) {
+        if (hash !== signature) {
           strapi.log.warn("[Webhook] Invalid signature attempt.");
           return ctx.unauthorized("Invalid signature");
         }
@@ -99,60 +104,89 @@ export default factories.createCoreController(
         // 2. Parse Event
         const event = ctx.request.body;
 
-        // We only care if payment was successful
         if (event.event === "charge.success") {
-          const { metadata, reference, amount, customer } = event.data;
+          const { reference, amount, metadata, customer } = event.data;
 
-          // Get the Appointment ID we sent from the Frontend
-          const appointmentId = metadata?.appointment_id;
+          strapi.log.info(
+            `[Webhook] Processing successful payment: ${reference}`
+          );
 
-          if (appointmentId) {
-            strapi.log.info(
-              `[Webhook] Verifying Appointment: ${appointmentId} | Ref: ${reference}`
+          // 3. Check Metadata for Recovery Data
+          const recoveryData = metadata?.booking_recovery;
+
+          if (!recoveryData) {
+            strapi.log.warn(
+              `[Webhook] No recovery data found for ${reference}. Skipping appointment check.`
             );
+            // We still verify the payment was logged though
+            await ensurePaymentRecord(
+              strapi,
+              reference,
+              amount,
+              customer.email,
+              null
+            );
+            return ctx.send({ status: "no_recovery_data" });
+          }
 
-            // 3. Update Appointment Status to Confirmed
-            // This triggers 'afterUpdate' lifecycle -> Sends Email
-            await strapi.documents("api::appointment.appointment").update({
-              documentId: appointmentId,
-              data: {
-                BookingStatus: "Confirmed",
+          // 4. DUPLICATE CHECK: Did the frontend already create this?
+          // We check for an appointment at the same time for the same email
+          const existingAppointments = await strapi
+            .documents("api::appointment.appointment")
+            .findMany({
+              filters: {
+                ClientEmail: customer.email,
+                AppointmentDateTime: recoveryData.dateTime, // Exact time match
+                BookingStatus: { $ne: "Cancelled" }, // Ignore cancelled ones
               },
             });
 
-            // 4. Create Payment Record (Safety Net)
-            // If the frontend closed early, the payment record might not exist yet.
-            // We check if it exists; if not, we create it.
-            const existingPayments = await strapi
-              .documents("api::payment.payment")
-              .findMany({
-                filters: { Reference: reference },
-              });
+          let finalAppointmentId = null;
 
-            if (existingPayments.length === 0) {
-              strapi.log.info(
-                `[Webhook] Creating missing payment record for Ref: ${reference}`
-              );
-              await strapi.documents("api::payment.payment").create({
+          if (existingAppointments.length > 0) {
+            strapi.log.info(
+              `[Webhook] Appointment already exists (ID: ${existingAppointments[0].documentId}). No recovery needed.`
+            );
+            finalAppointmentId = existingAppointments[0].documentId;
+          } else {
+            // 5. RECOVERY: Create the Appointment
+            strapi.log.info(
+              `[Webhook] ⚠️ Frontend didn't create booking. Recovering now for ${reference}...`
+            );
+
+            const newAppointment = await strapi
+              .documents("api::appointment.appointment")
+              .create({
                 data: {
-                  Reference: reference,
-                  Amount: amount / 100, // Paystack sends Kobo, we save Naira
+                  ClientName: recoveryData.clientName,
                   ClientEmail: customer.email,
-                  PaymentStatus: "Success",
-                  Appointment: appointmentId,
+                  ClientPhone: recoveryData.clientPhone,
+                  AppointmentDateTime: recoveryData.dateTime,
+                  BookingStatus: "Confirmed", // Create directly as Confirmed
+                  TotalAmount: recoveryData.totalPrice,
+                  booked_services: recoveryData.serviceIds, // Array of IDs
+                  SelectedStaff: recoveryData.staffId || null,
                 },
               });
-            }
 
-            return ctx.send({ status: "success" });
-          } else {
-            strapi.log.warn(
-              `[Webhook] charge.success received but no appointment_id in metadata. Ref: ${reference}`
+            finalAppointmentId = newAppointment.documentId;
+            strapi.log.info(
+              `[Webhook] ✓ Recovered Appointment ID: ${finalAppointmentId}`
             );
           }
+
+          // 6. Ensure Payment Record Exists
+          await ensurePaymentRecord(
+            strapi,
+            reference,
+            amount,
+            customer.email,
+            finalAppointmentId
+          );
+
+          return ctx.send({ status: "success" });
         }
 
-        // Acknowledge other events so Paystack doesn't keep retrying
         return ctx.send({ status: "ignored" });
       } catch (error) {
         strapi.log.error("[Webhook Error]", error);
@@ -161,3 +195,37 @@ export default factories.createCoreController(
     },
   })
 );
+
+// --- HELPER FUNCTION ---
+async function ensurePaymentRecord(
+  strapi,
+  reference,
+  amountKobo,
+  email,
+  appointmentId
+) {
+  try {
+    const existingPayment = await strapi
+      .documents("api::payment.payment")
+      .findMany({
+        filters: { Reference: reference },
+      });
+
+    if (existingPayment.length === 0) {
+      await strapi.documents("api::payment.payment").create({
+        data: {
+          Reference: reference,
+          Amount: amountKobo / 100, // Convert Kobo to Naira
+          ClientEmail: email,
+          PaymentStatus: "Success",
+          Appointment: appointmentId, // Link if we have it
+        },
+      });
+      strapi.log.info(`[Webhook] Created Payment record for ${reference}`);
+    }
+  } catch (err) {
+    strapi.log.error(
+      `[Webhook] Failed to ensure payment record: ${err.message}`
+    );
+  }
+}
