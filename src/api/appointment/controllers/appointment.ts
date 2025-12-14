@@ -177,7 +177,7 @@ async function ensurePaymentRecord(
           ClientEmail: email,
           PaymentStatus: "Success",
           Appointment: appointmentId,
-          publishedAt: new Date(), // Publish the payment record immediately
+          publishedAt: new Date(), // Publish the payment record immediately.
         },
       });
       strapi.log.info(`[Webhook] Payment record created for Ref: ${reference}`);
