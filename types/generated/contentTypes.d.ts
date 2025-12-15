@@ -538,6 +538,40 @@ export interface ApiAppointmentAppointment extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiBlockedDateBlockedDate extends Struct.CollectionTypeSchema {
+  collectionName: 'blocked_dates';
+  info: {
+    displayName: 'BlockedDate';
+    pluralName: 'blocked-dates';
+    singularName: 'blocked-date';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    Date: Schema.Attribute.Date & Schema.Attribute.Required;
+    EndTime: Schema.Attribute.Time;
+    IsFullDay: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
+    Label: Schema.Attribute.String;
+    locale: Schema.Attribute.String & Schema.Attribute.Private;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::blocked-date.blocked-date'
+    > &
+      Schema.Attribute.Private;
+    publishedAt: Schema.Attribute.DateTime;
+    StartTime: Schema.Attribute.Time;
+    updatedAt: Schema.Attribute.DateTime;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+  };
+}
+
 export interface ApiBookingPolicyBookingPolicy extends Struct.SingleTypeSchema {
   collectionName: 'booking_policies';
   info: {
@@ -1364,6 +1398,7 @@ declare module '@strapi/strapi' {
       'api::about-page.about-page': ApiAboutPageAboutPage;
       'api::academy-page.academy-page': ApiAcademyPageAcademyPage;
       'api::appointment.appointment': ApiAppointmentAppointment;
+      'api::blocked-date.blocked-date': ApiBlockedDateBlockedDate;
       'api::booking-policy.booking-policy': ApiBookingPolicyBookingPolicy;
       'api::booking-setting.booking-setting': ApiBookingSettingBookingSetting;
       'api::global.global': ApiGlobalGlobal;

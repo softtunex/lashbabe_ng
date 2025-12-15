@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "blocked_dates",
+  "info": {
+    "singularName": "blocked-date",
+    "pluralName": "blocked-dates",
+    "displayName": "BlockedDate"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "Date": {
+      "type": "date",
+      "required": true
+    },
+    "Label": {
+      "type": "string"
+    },
+    "IsFullDay": {
+      "type": "boolean",
+      "required": true,
+      "default": false
+    },
+    "StartTime": {
+      "type": "time"
+    },
+    "EndTime": {
+      "type": "time"
+    }
+  }
+}
