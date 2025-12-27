@@ -26,6 +26,11 @@
         "Success",
         "Failed"
       ]
+    },
+    "Appointment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::appointment.appointment"
     }
   }
 }
