@@ -29,6 +29,7 @@
     "react-dom": "^18.0.0",
     "react-helmet": "^6.1.0",
     "react-router-dom": "^6.0.0",
+    "strapi-provider-email-resend": "^1.0.4",
     "strapi-provider-email-smtp": "^1.0.3",
     "styled-components": "^6.0.0"
   },

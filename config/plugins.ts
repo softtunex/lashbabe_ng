@@ -16,9 +16,9 @@ export default ({ env }) => ({
   },
   email: {
     config: {
-      provider: "sendgrid",
+      provider: "strapi-provider-email-resend", // Changed from "sendgrid"
       providerOptions: {
-        apiKey: env("SMTP_PASSWORD"),
+        apiKey: env("RESEND_API_KEY"), // Make sure this matches your .env variable name
       },
       settings: {
         defaultFrom: env("SMTP_FROM_EMAIL"),
